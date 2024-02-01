@@ -1,0 +1,128 @@
+name: 'Apple action - Prepare certificate'
+description: 'Create if does not exist and download certificate'
+inputs:
+  app-store-connect-issuer-id:
+    description: 'Issuer ID of App Store Connect API Key'
+    required: true
+  app-store-connect-key-id:
+    description: 'Key ID of App Store Connect API Key'
+    required: true
+  app-store-connect-private-key:
+    description: 'Private Key (Base64) of App Store Connect API Key'
+    required: true
+  certificate-distribution-private-key:
+    description: 'Private Key (Base64) for Certificate Signing Request'
+    required: false
+  certificate-distribution-private-key-password:
+    description: 'Password of Private Key for Certificate Signing Request'
+    required: false
+  certificate-development-private-key:
+    description: 'Private Key (Base64) for Certificate Signing Request'
+    required: false
+  certificate-development-private-key-password:
+    description: 'Password of Private Key for Certificate Signing Request'
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache Codemagic CLI
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: cache-pip-apple-action-prepare-certificate
+
+    - name: Install Codemagic CLI
+      run: |
+        pip3 install codemagic-cli-tools
+      shell: bash
+
+    - name: Prepare distribution certificate
+      if: |
+        inputs.certificate-distribution-private-key != null
+        && inputs.certificate-distribution-private-key-password != null
+      env:
+        APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
+        CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
+      run: |
+        echo '${{ inputs.app-store-connect-private-key }}' \
+          | base64 --decode \
+          > ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
+        echo '${{ inputs.certificate-distribution-private-key }}' \
+          | base64 --decode \
+          > ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+        keychain initialize
+        app-store-connect certificates list \
+          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
+          --key-id ${{ inputs.app-store-connect-key-id }} \
+          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
+          --type DISTRIBUTION \
+          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
+          --certificate-key-password ${{ inputs.certificate-distribution-private-key-password }} \
+          --api-unauthorized-retries 100 \
+          --disable-jwt-cache \
+          --log-stream stdout \
+          --save \
+          | grep 'Saved Signing Certificate' \
+          || app-store-connect certificates create \
+          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
+          --key-id ${{ inputs.app-store-connect-key-id }} \
+          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
+          --type DISTRIBUTION \
+          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
+          --certificate-key-password ${{ inputs.certificate-distribution-private-key-password }} \
+          --api-unauthorized-retries 100 \
+          --disable-jwt-cache \
+          --log-stream stdout \
+          --save
+        keychain add-certificates
+        rm ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
+        rm ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+      shell: bash
+
+    - name: Prepare development certificate
+      if: |
+        inputs.certificate-development-private-key != null
+        && inputs.certificate-development-private-key-password != null
+      env:
+        APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
+        CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
+      run: |
+        echo '${{ inputs.app-store-connect-private-key }}' \
+          | base64 --decode \
+          > ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
+        echo '${{ inputs.certificate-development-private-key }}' \
+          | base64 --decode \
+          > ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+        keychain initialize
+        app-store-connect certificates list \
+          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
+          --key-id ${{ inputs.app-store-connect-key-id }} \
+          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
+          --type DEVELOPMENT \
+          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
+          --certificate-key-password ${{ inputs.certificate-development-private-key-password }} \
+          --api-unauthorized-retries 100 \
+          --disable-jwt-cache \
+          --log-stream stdout \
+          --save \
+          | grep 'Saved Signing Certificate' \
+          || app-store-connect certificates create \
+          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
+          --key-id ${{ inputs.app-store-connect-key-id }} \
+          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
+          --type DEVELOPMENT \
+          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
+          --certificate-key-password ${{ inputs.certificate-development-private-key-password }} \
+          --api-unauthorized-retries 100 \
+          --disable-jwt-cache \
+          --log-stream stdout \
+          --save
+        keychain add-certificates
+        rm ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
+        rm ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+      shell: bash

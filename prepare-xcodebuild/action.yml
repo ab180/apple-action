@@ -1,0 +1,70 @@
+name: 'Apple action - Prepare xcodebuild'
+description: 'Apply options to xcodebuild globally'
+inputs:
+  xcbeautify:
+    description: 'Apply xcbeautify'
+    type: boolean
+    required: true
+  automatic-signing:
+    description: 'Apply automatic signing'
+    type: boolean
+    required: true
+  app-store-connect-issuer-id:
+    description: 'Issuer ID of App Store Connect API Key to apply automatic signing'
+    type: string
+    required: false
+  app-store-connect-key-id:
+    description: 'Key ID of App Store Connect API Key to apply automatic signing'
+    type: string
+    required: false
+  app-store-connect-private-key:
+    description: 'Private Key (Base64) of App Store Connect API Key to apply automatic signing'
+    type: string
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare xcodebuild
+      env:
+        APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
+      run: |
+        echo '${{ inputs.app-store-connect-private-key }}' \
+          | base64 --decode \
+          > ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
+        echo '
+          #!/bin/zsh
+          export PATH=$(echo $PATH | sed s!$(dirname $(readlink -f $0)):!!g)
+          XCODEBUILD_OPTION=""
+          BEAUTIFY=0
+          BEAUTIFY_OPTION="^(test|archive|-exportArchive|-create-xcframework|docbuild)$"
+          if [[ ${{ inputs.xcbeautify }} == true ]]; then
+            for OPTION in "${@:1}"; do
+              if [[ $OPTION =~ $BEAUTIFY_OPTION ]]; then
+                BEAUTIFY=1
+                break
+              fi
+            done
+          fi
+          AUTOMATIC_SIGNING_OPTION="^(test|archive|-exportArchive)$"
+          if [[ ${{ inputs.automatic-signing }} == true ]]; then
+            for OPTION in "${@:1}"; do
+              if [[ $OPTION =~ $AUTOMATIC_SIGNING_OPTION ]]; then
+                XCODEBUILD_OPTION+="-allowProvisioningUpdates "
+                XCODEBUILD_OPTION+="-authenticationKeyIssuerID ${{ inputs.app-store-connect-issuer-id }} "
+                XCODEBUILD_OPTION+="-authenticationKeyID ${{ inputs.app-store-connect-key-id }} "
+                XCODEBUILD_OPTION+="-authenticationKeyPath $(readlink -f ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}) "
+                break
+              fi
+            done
+          fi
+          if [[ $BEAUTIFY == 1 ]]; then
+            xcodebuild "$@" $XCODEBUILD_OPTION \
+              | xcbeautify \
+              && exit ${PIPESTATUS[0]}
+          else
+            xcodebuild "$@" $XCODEBUILD_OPTION
+          fi
+        ' > xcodebuild
+        chmod 755 xcodebuild
+        echo $(dirname $(readlink -f xcodebuild)) >> $GITHUB_PATH
+      shell: bash
