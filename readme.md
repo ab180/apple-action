@@ -7,7 +7,7 @@ Manage apple related tasks on github action.
 Create if does not exist and download certificate.
 
 ```
-- uses: ab180/apple-action/prepare-certificate@v1
+- uses: ab180/apple-action/prepare-certificate@v2
   with:
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
     app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
@@ -18,10 +18,26 @@ Create if does not exist and download certificate.
     certificate-development-private-key-password: ${{ secrets.certificate-development-private-key_PASSWORD }}
 ```
 
-## [prepare-xcbeautify](/prepare-xcbeautify/readme.md)
+## [prepare-xcodebuild](/prepare-xcodebuild/readme.md)
 
-Apply xcbeautify to xcodebuild globally.
+Apply options to xcodebuild globally.
 
 ```
-- uses: ab180/apple-action/prepare-xcbeautify@v1
+- uses: ab180/apple-action/prepare-xcodebuild@v2
+  with:
+    xcbeautify: true
+    automatic-signing: true
+    app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
+    app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
+    app-store-connect-private-key: ${{ secrets.app-store-connect-private-key }}
+```
+
+## [prepare-xcode](/prepare-xcode/readme.md)
+
+Select Xcode version.
+
+```
+- uses: ab180/apple-action/prepare-xcode@v2
+  with:
+    version: 15.3
 ```

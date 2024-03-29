@@ -1,0 +1,14 @@
+name: 'Apple action - Select Xcode'
+description: 'Select Xcode version'
+inputs:
+  version:
+    description: 'Version of Xcode'
+    type: string
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare xcodebuild
+      run: |
+        sudo xcode-select --switch '/Applications/Xcode_${{ inputs.version }}.app'
+      shell: bash

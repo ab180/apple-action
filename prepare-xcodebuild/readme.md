@@ -17,7 +17,7 @@ Apply options to xcodebuild globally.
 ## Usage
 
 ```
-- uses: ab180/apple-action/prepare-xcodebuild@v1
+- uses: ab180/apple-action/prepare-xcodebuild@v2
   with:
     xcbeautify: true
     automatic-signing: true

@@ -12,7 +12,7 @@ Create if does not exist and download certificate.
 ## Usage
 
 ```
-- uses: ab180/apple-action/prepare-certificate@v1
+- uses: ab180/apple-action/prepare-certificate@v2
   with:
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
     app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
