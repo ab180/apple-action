@@ -1,0 +1,185 @@
+name: 'Deploy ios application to aws'
+description: Deploy ios application to aws
+
+inputs:
+  application:
+    description: Application to deploy
+    type: string
+    required: true
+  application-version:
+    description: Version of application
+    type: string
+    required: true
+  application-identifier:
+    description: Identifier of application
+    type: string
+    required: true
+  bucket:
+    description: Bucket to deploy
+    type: string
+    required: true
+  distribution:
+    description: Distribution connected with bucket
+    type: string
+    required: true
+  domain:
+    description: Domain of distribution connected with bucket
+    type: string
+    required: true
+  directory:
+    description: Directory to deploy
+    type: string
+    required: true
+
+outputs:
+  install-url:
+    description: URL to install application
+    value: ${{ steps.deploy-application-html.outputs.url }}
+  download-url:
+    description: URL to download application
+    value: ${{ steps.deploy-application-ipa.outputs.url }}
+  expire:
+    description: Expire date of deploy
+    value: ${{ steps.prepare-environment.outputs.expire }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare environment
+      id: prepare-environment
+      run: |
+        NAME="$(basename '${{ inputs.application }}' .ipa)"
+        EXPIRE="$(date -v+90d -I)"
+        echo "NAME=$NAME" >> $GITHUB_ENV
+        echo "EXPIRE=$EXPIRE" >> $GITHUB_ENV
+        echo "name=$NAME" >> $GITHUB_OUTPUT
+        echo "expire=$EXPIRE" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Deploy application
+      id: deploy-application-ipa
+      run: |
+        aws s3 cp --expires "$EXPIRE" \
+          '${{ inputs.application }}' \
+          "s3://${{ inputs.bucket }}/${{ inputs.directory }}/$NAME.ipa"
+        aws cloudfront create-invalidation \
+          --distribution-id '${{ inputs.distribution }}' \
+          --paths "/${{ inputs.directory }}/$NAME.ipa"
+        URL="https://${{ inputs.domain }}/${{ inputs.directory }}/$NAME.ipa"
+        echo "url=$URL" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Deploy application manifest
+      id: deploy-application-manifest
+      run: |
+        MANIFEST+='<?xml version="1.0" encoding="UTF-8"?>\n'
+        MANIFEST+='<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+        MANIFEST+='<plist version="1.0">\n'
+        MANIFEST+='<dict>\n'
+        MANIFEST+='  <key>items</key>\n'
+        MANIFEST+='  <array>\n'
+        MANIFEST+='    <dict>\n'
+        MANIFEST+='      <key>assets</key>\n'
+        MANIFEST+='      <array>\n'
+        MANIFEST+='        <dict>\n'
+        MANIFEST+='          <key>kind</key>\n'
+        MANIFEST+='          <string>software-package</string>\n'
+        MANIFEST+='          <key>url</key>\n'
+        MANIFEST+='          <string>{{download}}</string>\n'
+        MANIFEST+='        </dict>\n'
+        MANIFEST+='      </array>\n'
+        MANIFEST+='      <key>metadata</key>\n'
+        MANIFEST+='      <dict>\n'
+        MANIFEST+='        <key>bundle-identifier</key>\n'
+        MANIFEST+='        <string>{{identifier}}</string>\n'
+        MANIFEST+='        <key>bundle-version</key>\n'
+        MANIFEST+='        <string>{{version}}</string>\n'
+        MANIFEST+='        <key>kind</key>\n'
+        MANIFEST+='        <string>software</string>\n'
+        MANIFEST+='        <key>platform-identifier</key>\n'
+        MANIFEST+='        <string>com.apple.platform.iphoneos</string>\n'
+        MANIFEST+='        <key>title</key>\n'
+        MANIFEST+='        <string>{{name}}</string>\n'
+        MANIFEST+='      </dict>\n'
+        MANIFEST+='    </dict>\n'
+        MANIFEST+='  </array>\n'
+        MANIFEST+='</dict>\n'
+        MANIFEST+='</plist>\n'
+        printf "$MANIFEST" > "$NAME.manifest.plist"
+        DOWNLOAD="$(echo '${{ steps.deploy-application-ipa.outputs.url }}' | sed 's/&/\\&/g')"
+        perl -i -pe "s^{{name}}^$NAME^g" "$NAME.manifest.plist"
+        perl -i -pe "s^{{version}}^${{ inputs.application-version }}^g" "$NAME.manifest.plist"
+        perl -i -pe "s^{{identifier}}^${{ inputs.application-identifier }}^g" "$NAME.manifest.plist"
+        perl -i -pe "s^{{download}}^$DOWNLOAD^g" "$NAME.manifest.plist"
+        aws s3 cp --expires "$EXPIRE" \
+          "$NAME.manifest.plist" \
+          "s3://${{ inputs.bucket }}/${{ inputs.directory }}/$NAME.manifest.plist"
+        aws cloudfront create-invalidation \
+          --distribution-id '${{ inputs.distribution }}' \
+          --paths "/${{ inputs.directory }}/$NAME.manifest.plist"
+        rm "$NAME.manifest.plist"
+        URL="itms-services://?action=download-manifest&url=$(
+          echo "https://${{ inputs.domain }}/${{ inputs.directory }}/$NAME.manifest.plist"
+        )"
+        echo "url=$URL" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Deploy application html
+      id: deploy-application-html
+      run: |
+        HTML+='<!doctype html>\n'
+        HTML+='<html>\n'
+        HTML+='<head>\n'
+        HTML+='  <meta charset="UTF-8">\n'
+        HTML+='  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        HTML+='  <script src="https://cdn.tailwindcss.com"></script>\n'
+        HTML+='</head>\n'
+        HTML+='<body>\n'
+        HTML+='  <div class="\n'
+        HTML+='    relative flex flex-col justify-center\n'
+        HTML+='    min-h-screen bg-gray-200\n'
+        HTML+='  ">\n'
+        HTML+='    <div class="\n'
+        HTML+='      relative p-8 mx-auto bg-white\n'
+        HTML+='      ring-1 ring-gray-100 shadow-xl rounded-lg\n'
+        HTML+='    ">\n'
+        HTML+='      <p class="text-center w-52 py-8 text-base">{{name}}</p>\n'
+        HTML+='      <div class="flex flex-col">\n'
+        HTML+='        <a href="{{install}}">\n'
+        HTML+='          <button class="\n'
+        HTML+='            text-white w-52 px-16 py-2 m-1 rounded-lg\n'
+        HTML+='            bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800\n'
+        HTML+='          ">\n'
+        HTML+='            Install\n'
+        HTML+='          </button>\n'
+        HTML+='        </a>\n'
+        HTML+='        <a href="{{download}}">\n'
+        HTML+='          <button class="\n'
+        HTML+='            text-white w-52 px-16 py-2 m-1 rounded-lg\n'
+        HTML+='            bg-slate-600 hover:bg-slate-700 active:bg-slate-800\n'
+        HTML+='          ">\n'
+        HTML+='            Download\n'
+        HTML+='          </button>\n'
+        HTML+='        </a>\n'
+        HTML+='        <p class="text-center text-xs mt-6">Expire: {{expire}}</p>\n'
+        HTML+='      </div>\n'
+        HTML+='    </div>\n'
+        HTML+='  </div>\n'
+        HTML+='</body>\n'
+        HTML+='</html>\n'
+        printf "$HTML" > "$NAME.html"
+        INSTALL="$(echo '${{ steps.deploy-application-manifest.outputs.url }}' | sed 's/&/\\&/g')"
+        DOWNLOAD="$(echo '${{ steps.deploy-application-ipa.outputs.url }}' | sed 's/&/\\&/g')"
+        perl -i -pe "s^{{name}}^$NAME^g" "$NAME.html"
+        perl -i -pe "s^{{expire}}^$EXPIRE^g" "$NAME.html"
+        perl -i -pe "s^{{install}}^$INSTALL^g" "$NAME.html"
+        perl -i -pe "s^{{download}}^$DOWNLOAD^g" "$NAME.html"
+        aws s3 cp --expires "$EXPIRE" \
+          "$NAME.html" \
+          "s3://${{ inputs.bucket }}/${{ inputs.directory }}/$NAME.html"
+        aws cloudfront create-invalidation \
+          --distribution-id '${{ inputs.distribution }}' \
+          --paths "/${{ inputs.directory }}/$NAME.html"
+        rm "$NAME.html"
+        URL="https://${{ inputs.domain }}/${{ inputs.directory }}/$NAME.html"
+        echo "url=$URL" >> $GITHUB_OUTPUT
+      shell: bash

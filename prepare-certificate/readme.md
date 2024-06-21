@@ -11,7 +11,7 @@ Create if does not exist and download certificate.
 
 ## Usage
 
-```
+```yml
 - uses: ab180/apple-action/prepare-certificate@v2
   with:
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
@@ -52,7 +52,7 @@ X           | certificate-development-private-key-password  | String    | Passwo
     - Certificate is created per unique Certificate Private Key.
 - How to create Private Key for Certificate Signing Request?
     - You can create AES256 encrypted RSA2048 key with below command.
-        ```
+        ```sh
         openssl genpkey -algorithm RSA \
             -pkeyopt rsa_keygen_bits:2048 \
             -pkeyopt rsa_keygen_pubexp:65537 \

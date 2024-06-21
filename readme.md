@@ -2,12 +2,33 @@
 
 Manage apple related tasks on github action.
 
+## [deploy-ios-application-to-aws](/deploy-ios-application-to-aws/readme.md)
+
+Deploy ios application to aws.
+
+```yml
+- uses: ab180/apple-action/deploy-ios-application-to-aws@v3
+  with:
+    application: Build/Application.ipa
+    application-version: 1.0.0
+    application-identifier: com.example.application
+    bucket: Bucket # Name of S3
+    distribution:  AAAAAAAAAAAAAA # ID of CloudFront
+    domain: application.example.com # Domain of CloudFront
+    directory: Build # Directory of S3
+```
+
+Output
+- install-url: URL to install application
+- download-url: URL to download application
+- expire: Expire date of deploy
+
 ## [prepare-certificate](/prepare-certificate/readme.md)
 
 Create if does not exist and download certificate.
 
-```
-- uses: ab180/apple-action/prepare-certificate@v2
+```yml
+- uses: ab180/apple-action/prepare-certificate@v3
   with:
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
     app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
@@ -22,22 +43,13 @@ Create if does not exist and download certificate.
 
 Apply options to xcodebuild globally.
 
-```
-- uses: ab180/apple-action/prepare-xcodebuild@v2
+```yml
+- uses: ab180/apple-action/prepare-xcodebuild@v3
   with:
+    version: 15.3
     xcbeautify: true
     automatic-signing: true
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
     app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
     app-store-connect-private-key: ${{ secrets.app-store-connect-private-key }}
-```
-
-## [prepare-xcode](/prepare-xcode/readme.md)
-
-Select Xcode version.
-
-```
-- uses: ab180/apple-action/prepare-xcode@v2
-  with:
-    version: 15.3
 ```
