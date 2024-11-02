@@ -2,11 +2,9 @@
 
 Manage apple related tasks on github action.
 
-# [deploy-cocoapods-version](/deploy-cocoapods-version/readme.md)
+## [deploy-cocoapods-version](/deploy-cocoapods-version/readme.md)
 
 Deploy Cocoapods version.
-
-## Usage
 
 ```yml
 - uses: ab180/apple-action/deploy-cocoapods-version
@@ -67,11 +65,9 @@ Apply options to xcodebuild globally.
     app-store-connect-private-key: ${{ secrets.app-store-connect-private-key }}
 ```
 
-# [rollback-cocoapods-version](/rollback-cocoapods-version/readme.md)
+## [rollback-cocoapods-version](/rollback-cocoapods-version/readme.md)
 
 Rollback Cocoapods version.
-
-## Usage
 
 ```yml
 - uses: ab180/apple-action/rollback-cocoapods-version
