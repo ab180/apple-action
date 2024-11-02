@@ -1,0 +1,39 @@
+name: 'Deploy CocoaPods version'
+description: Deploy CocoaPods version
+
+inputs:
+  podspec:
+    description: Path of podspec file
+    type: string
+    required: true
+  token:
+    description: Token of CocoaPods
+    type: string
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy CocoaPods version
+      run: |
+        set +e
+        set +o pipefail
+        for TRY in {1..30}; do
+          echo "Try $TRY / 10"
+          MESSAGE="$(pod trunk push '${{ inputs.podspec }}' 2>&1 | cat)"
+          STATUS=$?
+          if [[ "$STATUS" == $(echo '0') ]]; then
+            printf "$MESSAGE"
+            break
+          elif ! [[ "$MESSAGE" =~ $(echo '\[\!\] An internal server error occurred\.') ]]; then
+            printf "$MESSAGE"
+            exit 1
+            break
+          fi
+          printf "$MESSAGE"
+          echo 'Server error, retry after 10 second delay'
+          sleep 10
+        done
+      env:
+        COCOAPODS_TRUNK_TOKEN: ${{ inputs.token || env.COCOAPODS_TRUNK_TOKEN }}
+      shell: bash

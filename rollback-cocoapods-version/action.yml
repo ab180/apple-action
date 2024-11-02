@@ -1,0 +1,46 @@
+name: 'Rollback CocoaPods version'
+description: Rollback CocoaPods version
+
+inputs:
+  name:
+    description: Name of package
+    type: string
+    required: true
+  version:
+    description: Version of package
+    type: string
+    required: true
+  token:
+    description: Token of CocoaPods
+    type: string
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Rollback CocoaPods version
+      run: |
+        set +e
+        set +o pipefail
+        for TRY in {1..30}; do
+          echo "Try $TRY / 10"
+          MESSAGE="$(echo 'yes' | pod trunk delete '${{ inputs.name }}' '${{ inputs.version }}' 2>&1 | cat)"
+          STATUS=$?
+          if [[ "$STATUS" == $(echo '0') ]]; then
+            printf "$MESSAGE"
+            break
+          elif [[ "$MESSAGE" =~ $(echo '\[\!\] The version is already deleted\.') ]]; then
+            echo 'Version is deleted'
+            break
+          elif ! [[ "$MESSAGE" =~ $(echo '\[\!\] An unexpected error occurred\: \<\!DOCTYPE html\>') ]]; then
+            printf "$MESSAGE"
+            exit 1
+            break
+          fi
+          printf "$MESSAGE"
+          echo 'Server error, retry after 10 second delay'
+          sleep 10
+        done
+      env:
+        COCOAPODS_TRUNK_TOKEN: ${{ inputs.token || env.COCOAPODS_TRUNK_TOKEN }}
+      shell: bash

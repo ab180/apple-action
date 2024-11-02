@@ -2,6 +2,19 @@
 
 Manage apple related tasks on github action.
 
+# [deploy-cocoapods-version](/deploy-cocoapods-version/readme.md)
+
+Deploy Cocoapods version.
+
+## Usage
+
+```yml
+- uses: ab180/apple-action/deploy-cocoapods-version
+  with:
+    podspec: ---.podspec # Path of podspec file
+    token: --- # Token of CocoaPods (Default: $COCOAPODS_TRUNK_TOKEN)
+```
+
 ## [deploy-ios-application-to-aws](/deploy-ios-application-to-aws/readme.md)
 
 Deploy ios application to aws.
@@ -52,4 +65,18 @@ Apply options to xcodebuild globally.
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
     app-store-connect-key-id: ${{ secrets.app-store-connect-key-id }}
     app-store-connect-private-key: ${{ secrets.app-store-connect-private-key }}
+```
+
+# [rollback-cocoapods-version](/rollback-cocoapods-version/readme.md)
+
+Rollback Cocoapods version.
+
+## Usage
+
+```yml
+- uses: ab180/apple-action/rollback-cocoapods-version
+  with:
+    name: --- # Name of package
+    version: --- # Version of package
+    token: --- # Token of CocoaPods (Default: $COCOAPODS_TRUNK_TOKEN)
 ```
