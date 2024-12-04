@@ -28,15 +28,26 @@ runs:
     - name: Prepare python
       uses: actions/setup-python@v5
 
-    - name: Cache Codemagic CLI
+    - name: Cache pip
       uses: actions/cache@v4
       with:
         path: ~/Library/Caches/pip
-        key: cache-pip-apple-action-prepare-certificate
+        key: cache-pip
 
-    - name: Install Codemagic CLI
+    - name: Install Dependencies
+      id: install-dependencies
       run: |
-        pip3 install codemagic-cli-tools
+        mkdir -p ./.prepare-certificate-python-environment
+        python3 -m venv ./.prepare-certificate-python-environment
+        source ./.prepare-certificate-python-environment/bin/activate
+        python3 -m pip install codemagic-cli-tools
+        deactivate
+        PYTHON_ENVIRONMENT="$(readlink -f ./.prepare-certificate-python-environment)"
+        PATH="$(readlink -f ./.prepare-certificate-python-environment/bin):$PATH"
+        echo "::add-mask::$PYTHON_ENVIRONMENT"
+        echo "python-environment=$PYTHON_ENVIRONMENT" >> $GITHUB_OUTPUT
+        echo "::add-mask::$PATH"
+        echo "path=$PATH" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Prepare distribution certificate
@@ -44,6 +55,7 @@ runs:
         inputs.certificate-distribution-private-key != null
         && inputs.certificate-distribution-private-key-password != null
       env:
+        PATH: ${{ steps.install-dependencies.outputs.path }}
         APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
         CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
       run: |
@@ -87,6 +99,7 @@ runs:
         inputs.certificate-development-private-key != null
         && inputs.certificate-development-private-key-password != null
       env:
+        PATH: ${{ steps.install-dependencies.outputs.path }}
         APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
         CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
       run: |
@@ -123,4 +136,10 @@ runs:
         keychain add-certificates
         rm ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
         rm ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+      shell: bash
+
+    - name: Clean Dependencies
+      if: always() && steps.install-dependencies.outcome == 'success'
+      run: |
+        rm -rf ${{ steps.install-dependencies.outputs.python-environment }}
       shell: bash
