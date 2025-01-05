@@ -19,9 +19,8 @@ Apply options to xcodebuild globally.
 ## Usage
 
 ```yml
-- uses: ab180/apple-action/prepare-xcodebuild@v2
+- uses: ab180/apple-action/prepare-xcodebuild@v3
   with:
-    version: 15.3
     xcbeautify: true
     automatic-signing: true
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
@@ -31,7 +30,7 @@ Apply options to xcodebuild globally.
 
 Required    | Name                                          | Type      | Description
 ---         | ---                                           | ---       | ---
-O           | version                                       | String    | Version of Xcode
+X           | version                                       | String    | Version of Xcode
 O           | xcbeautify                                    | Boolean   | Apply xcbeautify or not
 O           | automatic-signing                             | Boolean   | Apply automatic signing or not
 O           | app-store-connect-issuer-id                   | String    | Issuer ID of App Store Connect API Key to apply automatic signing

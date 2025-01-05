@@ -5,7 +5,7 @@ Deploy ios application to aws.
 ## Usage
 
 ```yml
-- uses: ab180/apple-action/deploy-ios-application-to-aws
+- uses: ab180/apple-action/deploy-ios-application-to-aws@v3
   with:
     application: Build/Application.ipa
     application-version: 1.0.0

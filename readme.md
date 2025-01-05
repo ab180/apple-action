@@ -7,7 +7,7 @@ Manage apple related tasks on github action.
 Deploy Cocoapods version.
 
 ```yml
-- uses: ab180/apple-action/deploy-cocoapods-version
+- uses: ab180/apple-action/deploy-cocoapods-version@v3
   with:
     podspec: ---.podspec # Path of podspec file
     token: --- # Token of CocoaPods (Default: $COCOAPODS_TRUNK_TOKEN)
@@ -57,7 +57,6 @@ Apply options to xcodebuild globally.
 ```yml
 - uses: ab180/apple-action/prepare-xcodebuild@v3
   with:
-    version: 15.3
     xcbeautify: true
     automatic-signing: true
     app-store-connect-issuer-id: ${{ secrets.app-store-connect-issuer-id }}
@@ -70,7 +69,7 @@ Apply options to xcodebuild globally.
 Rollback Cocoapods version.
 
 ```yml
-- uses: ab180/apple-action/rollback-cocoapods-version
+- uses: ab180/apple-action/rollback-cocoapods-version@v3
   with:
     name: --- # Name of package
     version: --- # Version of package

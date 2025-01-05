@@ -5,7 +5,7 @@ Rollback Cocoapods version.
 ## Usage
 
 ```yml
-- uses: ab180/apple-action/rollback-cocoapods-version
+- uses: ab180/apple-action/rollback-cocoapods-version@v3
   with:
     name: --- # Name of package
     version: --- # Version of package
