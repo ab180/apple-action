@@ -27,119 +27,117 @@ runs:
   steps:
     - name: Prepare python
       uses: actions/setup-python@v5
-
-    - name: Cache pip
-      uses: actions/cache@v4
       with:
-        path: ~/Library/Caches/pip
-        key: cache-pip
-
-    - name: Install Dependencies
-      id: install-dependencies
+        python-version: '3.x'
+    
+    - name: Prepare environment
+      id: prepare-environment
       run: |
-        mkdir -p ./.prepare-certificate-python-environment
-        python3 -m venv ./.prepare-certificate-python-environment
-        source ./.prepare-certificate-python-environment/bin/activate
+        BUFFER_DIRECTORY="$(mktemp -d -t AB180_APPLE_ACTION_SCRIPT_CERTIFICATE)"
+        PYTHON_ENVIRONMENT_DIRECTORY="$BUFFER_DIRECTORY/.python-environment"
+        PYTHON_BINARY_DIRECTORY="$PYTHON_ENVIRONMENT_DIRECTORY/bin"
+        CREDENTIAL_DIRECTORY="$BUFFER_DIRECTORY/.credential"
+
+        mkdir -p "$PYTHON_ENVIRONMENT_DIRECTORY"
+        python3 -m venv "$PYTHON_ENVIRONMENT_DIRECTORY"
+        source "$PYTHON_ENVIRONMENT_DIRECTORY/bin/activate"
         python3 -m pip install codemagic-cli-tools
         deactivate
-        PYTHON_ENVIRONMENT="$(readlink -f ./.prepare-certificate-python-environment)"
-        PATH="$(readlink -f ./.prepare-certificate-python-environment/bin):$PATH"
-        echo "::add-mask::$PYTHON_ENVIRONMENT"
-        echo "python-environment=$PYTHON_ENVIRONMENT" >> $GITHUB_OUTPUT
-        echo "::add-mask::$PATH"
-        echo "path=$PATH" >> $GITHUB_OUTPUT
+        mkdir -p "$CREDENTIAL_DIRECTORY"
+
+        echo "::add-mask::$BUFFER_DIRECTORY"
+        echo "buffer-path=$BUFFER_DIRECTORY" >> $GITHUB_OUTPUT
+        echo "python-path=$PYTHON_BINARY_DIRECTORY" >> $GITHUB_OUTPUT
+        echo "credential-path=$CREDENTIAL_DIRECTORY" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Prepare distribution certificate
-      if: |
-        inputs.certificate-distribution-private-key != null
-        && inputs.certificate-distribution-private-key-password != null
-      env:
-        PATH: ${{ steps.install-dependencies.outputs.path }}
-        APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
-        CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
+    - name: Prepare certificate
       run: |
-        echo '${{ inputs.app-store-connect-private-key }}' \
-          | base64 --decode \
-          > ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
-        echo '${{ inputs.certificate-distribution-private-key }}' \
-          | base64 --decode \
-          > ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
-        keychain initialize
-        app-store-connect certificates list \
-          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
-          --key-id ${{ inputs.app-store-connect-key-id }} \
-          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
-          --type DISTRIBUTION \
-          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
-          --certificate-key-password ${{ inputs.certificate-distribution-private-key-password }} \
-          --api-unauthorized-retries 100 \
-          --disable-jwt-cache \
-          --log-stream stdout \
-          --save \
-          | grep 'Saved Signing Certificate' \
-          || app-store-connect certificates create \
-          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
-          --key-id ${{ inputs.app-store-connect-key-id }} \
-          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
-          --type DISTRIBUTION \
-          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
-          --certificate-key-password ${{ inputs.certificate-distribution-private-key-password }} \
-          --api-unauthorized-retries 100 \
-          --disable-jwt-cache \
-          --log-stream stdout \
-          --save
-        keychain add-certificates
-        rm ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
-        rm ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
+        PYTHON_PATH='${{ steps.prepare-environment.outputs.python-path }}'
+        CREDENTIAL_PATH='${{ steps.prepare-environment.outputs.credential-path }}'
+        APP_STORE_CONNECT_PRIVATE_KEY_FILE="$CREDENTIAL_PATH/app_store_connect_private_key.p8"
+        CERTIFICATE_PRIVATE_KEY_FILE="$CREDENTIAL_PATH/certificate_private_key.p8"
+
+        function keychain {
+          "$PYTHON_PATH/keychain" "$@"
+        }
+        function app_store_connect {
+          "$PYTHON_PATH/app-store-connect" "$@" \
+            --issuer-id '${{ inputs.app-store-connect-issuer-id }}' \
+            --key-id '${{ inputs.app-store-connect-key-id }}' \
+            --api-unauthorized-retries 100 \
+            --disable-jwt-cache \
+            --log-stream stdout
+        }
+
+        if [[ ${{
+          inputs.certificate-distribution-private-key != null
+          && inputs.certificate-distribution-private-key-password != null
+        }} == true ]]; then
+          echo '${{ inputs.app-store-connect-private-key }}' \
+            | base64 --decode \
+            > "$APP_STORE_CONNECT_PRIVATE_KEY_FILE"
+          echo '${{ inputs.certificate-distribution-private-key }}' \
+            | base64 --decode \
+            > "$CERTIFICATE_PRIVATE_KEY_FILE"
+          function app_store_connect_distribution {
+            app_store_connect "$@" \
+              --type DISTRIBUTION \
+              --private-key "@file:$APP_STORE_CONNECT_PRIVATE_KEY_FILE" \
+              --certificate-key "@file:$CERTIFICATE_PRIVATE_KEY_FILE" \
+              --certificate-key-password '${{ inputs.certificate-distribution-private-key-password }}'
+          }
+
+          app_store_connect_distribution certificates list --save --certificates-dir "$CREDENTIAL_PATH" \
+            | grep 'Saved Signing Certificate' \
+            || app_store_connect_distribution certificates create --save --certificates-dir "$CREDENTIAL_PATH"
+        fi
+
+        if [[ ${{
+          inputs.certificate-development-private-key != null
+          && inputs.certificate-development-private-key-password != null
+        }} == true ]]; then
+          echo '${{ inputs.app-store-connect-private-key }}' \
+            | base64 --decode \
+            > "$APP_STORE_CONNECT_PRIVATE_KEY_FILE"
+          echo '${{ inputs.certificate-development-private-key }}' \
+            | base64 --decode \
+            > "$CERTIFICATE_PRIVATE_KEY_FILE"
+          function app_store_connect_development {
+            app_store_connect "$@" \
+              --type DEVELOPMENT \
+              --private-key "@file:$APP_STORE_CONNECT_PRIVATE_KEY_FILE" \
+              --certificate-key "@file:$CERTIFICATE_PRIVATE_KEY_FILE" \
+              --certificate-key-password '${{ inputs.certificate-development-private-key-password }}'
+          }
+
+          app_store_connect_development certificates list --save --certificates-dir "$CREDENTIAL_PATH" \
+            | grep 'Saved Signing Certificate' \
+            || app_store_connect_development certificates create --save --certificates-dir "$CREDENTIAL_PATH"
+        fi
+
+        keychain create \
+          --path "$CREDENTIAL_PATH/certificate.keychain-db"
+        keychain add-certificates \
+          --path "$CREDENTIAL_PATH/certificate.keychain-db" \
+          --allow-app xcodebuild codesign productsign \
+          --certificate "$CREDENTIAL_PATH/*.p12"
+
       shell: bash
 
-    - name: Prepare development certificate
-      if: |
-        inputs.certificate-development-private-key != null
-        && inputs.certificate-development-private-key-password != null
-      env:
-        PATH: ${{ steps.install-dependencies.outputs.path }}
-        APP_STORE_CONNECT_PRIVATE_KEY_FILE: app_store_connect_private_key.p8
-        CERTIFICATE_PRIVATE_KEY_FILE: certificate_private_key.p8
-      run: |
-        echo '${{ inputs.app-store-connect-private-key }}' \
-          | base64 --decode \
-          > ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
-        echo '${{ inputs.certificate-development-private-key }}' \
-          | base64 --decode \
-          > ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
-        keychain initialize
-        app-store-connect certificates list \
-          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
-          --key-id ${{ inputs.app-store-connect-key-id }} \
-          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
-          --type DEVELOPMENT \
-          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
-          --certificate-key-password ${{ inputs.certificate-development-private-key-password }} \
-          --api-unauthorized-retries 100 \
-          --disable-jwt-cache \
-          --log-stream stdout \
-          --save \
-          | grep 'Saved Signing Certificate' \
-          || app-store-connect certificates create \
-          --issuer-id ${{ inputs.app-store-connect-issuer-id }} \
-          --key-id ${{ inputs.app-store-connect-key-id }} \
-          --private-key @file:${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }} \
-          --type DEVELOPMENT \
-          --certificate-key @file:${{ env.CERTIFICATE_PRIVATE_KEY_FILE }} \
-          --certificate-key-password ${{ inputs.certificate-development-private-key-password }} \
-          --api-unauthorized-retries 100 \
-          --disable-jwt-cache \
-          --log-stream stdout \
-          --save
-        keychain add-certificates
-        rm ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_FILE }}
-        rm ${{ env.CERTIFICATE_PRIVATE_KEY_FILE }}
-      shell: bash
+    - name: Clean environment
+      if: always() && steps.prepare-environment.outcome == 'success'
+      uses: ab180/apple-action/.github/action/post-step@develop
+      with:
+        script: |
+          PYTHON_PATH='${{ steps.prepare-environment.outputs.python-path }}'
+          CREDENTIAL_PATH='${{ steps.prepare-environment.outputs.credential-path }}'
+          BUFFER_PATH='${{ steps.prepare-environment.outputs.buffer-path }}'
 
-    - name: Clean Dependencies
-      if: always() && steps.install-dependencies.outcome == 'success'
-      run: |
-        rm -rf ${{ steps.install-dependencies.outputs.python-environment }}
-      shell: bash
+          function keychain {
+            "$PYTHON_PATH/keychain" "$@"
+          }
+
+          keychain delete \
+            --path "$CREDENTIAL_PATH/certificate.keychain-db"
+          rm -rf "$BUFFER_PATH"
