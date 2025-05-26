@@ -127,7 +127,7 @@ runs:
 
     - name: Clean environment
       if: always() && steps.prepare-environment.outcome == 'success'
-      uses: ab180/apple-action/.github/action/post-step@develop
+      uses: ab180/apple-action/.github/action/post-step@v3
       with:
         script: |
           PYTHON_PATH='${{ steps.prepare-environment.outputs.python-path }}'
