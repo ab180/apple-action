@@ -118,6 +118,8 @@ runs:
 
         keychain create \
           --path "$CREDENTIAL_PATH/certificate.keychain-db"
+        keychain unlock \
+          --path "$CREDENTIAL_PATH/certificate.keychain-db"
         keychain add-certificates \
           --path "$CREDENTIAL_PATH/certificate.keychain-db" \
           --allow-app xcodebuild codesign productsign \
