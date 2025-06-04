@@ -23,8 +23,8 @@ runs:
         for TRY in {1..30}; do
           echo "Try $TRY / 30"
           MESSAGE="$(echo 'yes' | pod trunk delete '${{ inputs.name }}' '${{ inputs.version }}' 2>&1)" \
-            || STATUS=$?
-          if [[ "$STATUS" == $(echo '0') ]]; then
+            || FAILURE=true
+          if [[ $FAILURE != true ]]; then
             printf "$MESSAGE"
             break
           elif [[ "$MESSAGE" =~ $(echo '\[\!\] The version is already deleted\.') ]]; then

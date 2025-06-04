@@ -19,8 +19,8 @@ runs:
         for TRY in {1..30}; do
           echo "Try $TRY / 30"
           MESSAGE="$(pod trunk push '${{ inputs.podspec }}' 2>&1)" \
-            || STATUS=$?
-          if [[ "$STATUS" == $(echo '0') ]]; then
+            || FAILURE=true
+          if [[ $FAILURE != true ]]; then
             printf "$MESSAGE"
             break
           elif ! [[ "$MESSAGE" =~ $(echo '\[\!\] An internal server error occurred\.') ]]; then
