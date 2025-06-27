@@ -23,6 +23,7 @@ runs:
         for TRY in {1..30}; do
           echo "Try $TRY / 30"
           MESSAGE="$(echo 'yes' | pod trunk delete '${{ inputs.name }}' '${{ inputs.version }}' 2>&1)" \
+            && FAILURE=false \
             || FAILURE=true
           if [[ $FAILURE != true ]]; then
             printf "$MESSAGE"

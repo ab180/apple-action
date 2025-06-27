@@ -19,6 +19,7 @@ runs:
         for TRY in {1..30}; do
           echo "Try $TRY / 30"
           MESSAGE="$(pod trunk push '${{ inputs.podspec }}' 2>&1)" \
+            && FAILURE=false \
             || FAILURE=true
           if [[ $FAILURE != true ]]; then
             printf "$MESSAGE"
