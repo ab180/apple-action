@@ -30,6 +30,11 @@ inputs:
     description: Directory to deploy
     type: string
     required: true
+  expire:
+    description: Days until the deploy expires
+    type: string
+    default: '90'
+    required: false
 
 outputs:
   install-url:
@@ -48,7 +53,7 @@ runs:
       id: prepare-environment
       run: |
         NAME="$(basename '${{ inputs.application }}' .ipa)"
-        EXPIRE="$(date -v+90d -I)"
+        EXPIRE="$(date -v+'${{ inputs.expire }}'d -I)"
         echo "NAME=$NAME" >> $GITHUB_ENV
         echo "EXPIRE=$EXPIRE" >> $GITHUB_ENV
         echo "name=$NAME" >> $GITHUB_OUTPUT

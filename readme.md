@@ -27,6 +27,7 @@ Deploy ios application to aws.
     distribution:  AAAAAAAAAAAAAA # ID of CloudFront
     domain: application.example.com # Domain of CloudFront
     directory: Build # Directory of S3
+    expire: 90 # Days until the deploy expires (Default: 90)
 ```
 
 Output
