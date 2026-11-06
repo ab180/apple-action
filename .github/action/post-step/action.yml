@@ -5,6 +5,6 @@ inputs:
     description: 'Bash script runs on post step.'
     required: true
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'main.js'
   post: 'post.js'
